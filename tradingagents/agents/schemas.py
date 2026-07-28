@@ -221,11 +221,31 @@ class PortfolioDecision(BaseModel):
         default=None,
         description="Optional recommended holding period, e.g. '3-6 months'.",
     )
+    next_review_days: int | None = Field(
+        default=None,
+        ge=1,
+        le=60,
+        description=(
+            "In how many days this analysis should be revisited, based on the "
+            "catalyst calendar (earnings dates, macro prints, product events) "
+            "and conviction. Use a small number (3-5) when a near-term catalyst "
+            "or fragile setup demands a fresh look soon; a larger number "
+            "(10-21) when the thesis is stable and nothing is scheduled."
+        ),
+    )
 
     @field_validator("price_target", mode="before")
     @classmethod
     def _nullish_float_to_none(cls, v):
         return _coerce_optional_float(v)
+
+    @field_validator("next_review_days", mode="before")
+    @classmethod
+    def _nullish_int_to_none(cls, v):
+        coerced = _coerce_optional_float(v)
+        if coerced is None:
+            return None
+        return coerced
 
 
 def render_pm_decision(decision: PortfolioDecision) -> str:
@@ -247,6 +267,8 @@ def render_pm_decision(decision: PortfolioDecision) -> str:
         parts.extend(["", f"**Price Target**: {decision.price_target}"])
     if decision.time_horizon:
         parts.extend(["", f"**Time Horizon**: {decision.time_horizon}"])
+    if decision.next_review_days is not None:
+        parts.extend(["", f"**Next Review**: {decision.next_review_days} days"])
     return "\n".join(parts)
 
 

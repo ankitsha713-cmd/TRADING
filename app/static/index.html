@@ -1,0 +1,1017 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>TradingAgents Assistant</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>📈</text></svg>">
+<style>
+  :root {
+    --surface-1: #fcfcfb;
+    --page: #f9f9f7;
+    --ink: #0b0b0b;
+    --ink-2: #52514e;
+    --muted: #898781;
+    --grid: #e1e0d9;
+    --baseline: #c3c2b7;
+    --border: rgba(11,11,11,0.10);
+    --series-1: #2a78d6;
+    --good: #0ca30c;
+    --warning: #fab219;
+    --serious: #ec835a;
+    --critical: #d03b3b;
+    --hold: #898781;
+    --good-text: #006300;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --surface-1: #1a1a19;
+      --page: #0d0d0d;
+      --ink: #ffffff;
+      --ink-2: #c3c2b7;
+      --muted: #898781;
+      --grid: #2c2c2a;
+      --baseline: #383835;
+      --border: rgba(255,255,255,0.10);
+      --series-1: #3987e5;
+      --good-text: #0ca30c;
+    }
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; background: var(--page); color: var(--ink);
+    font-family: system-ui, -apple-system, "Segoe UI", sans-serif;
+    font-size: 14px; line-height: 1.45;
+  }
+  .topbar { position: sticky; top: 0; z-index: 5; }
+  header {
+    display: flex; flex-wrap: wrap; align-items: center; gap: 12px;
+    padding: 14px 20px; border-bottom: 1px solid var(--border);
+    background: var(--surface-1);
+  }
+  header h1 { font-size: 16px; margin: 0 8px 0 0; font-weight: 650; }
+  .chip {
+    display: inline-flex; align-items: center; gap: 6px;
+    padding: 3px 10px; border: 1px solid var(--border); border-radius: 999px;
+    color: var(--ink-2); font-size: 12px; background: var(--page);
+  }
+  .chip b { color: var(--ink); font-weight: 600; }
+  .dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; }
+  nav {
+    display: flex; gap: 4px; padding: 0 20px; background: var(--surface-1);
+    border-bottom: 1px solid var(--border); overflow-x: auto;
+  }
+  nav a {
+    padding: 10px 14px; font-size: 13px; color: var(--ink-2); text-decoration: none;
+    border-bottom: 2px solid transparent; white-space: nowrap;
+  }
+  nav a:hover { color: var(--ink); }
+  nav a.active { color: var(--ink); font-weight: 650; border-bottom-color: var(--series-1); }
+  main { max-width: 1180px; margin: 0 auto; padding: 20px; display: grid; gap: 20px; }
+  .page { display: none; }
+  .page.active { display: grid; gap: 20px; }
+  section {
+    background: var(--surface-1); border: 1px solid var(--border);
+    border-radius: 10px; padding: 16px 18px;
+  }
+  h2 { font-size: 13px; margin: 0 0 12px; color: var(--ink-2); font-weight: 650;
+       text-transform: uppercase; letter-spacing: .04em; }
+  h2 .sub { text-transform: none; letter-spacing: 0; font-weight: 400; color: var(--muted); }
+
+  /* Action board */
+  .board { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 14px; }
+  .lane { border: 1px solid var(--border); border-radius: 8px; padding: 10px; background: var(--page); }
+  .lane h3 { margin: 2px 4px 10px; font-size: 12px; color: var(--ink-2); font-weight: 650; }
+  .tcard {
+    display: flex; justify-content: space-between; align-items: center; gap: 8px;
+    padding: 9px 10px; margin-bottom: 8px; border: 1px solid var(--border);
+    border-radius: 7px; background: var(--surface-1); cursor: pointer;
+  }
+  .tcard:hover { border-color: var(--series-1); }
+  .tcard .sym { font-weight: 650; }
+  .tcard .meta { color: var(--muted); font-size: 11.5px; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 5px; font-size: 12px;
+    font-weight: 650; padding: 2px 9px; border-radius: 999px; border: 1.5px solid;
+    background: var(--surface-1); white-space: nowrap;
+  }
+  .b-buy   { color: var(--good-text); border-color: var(--good); }
+  .b-over  { color: var(--good-text); border-color: var(--good); }
+  .b-hold  { color: var(--ink-2); border-color: var(--hold); }
+  .b-under { color: var(--serious); border-color: var(--serious); }
+  .b-sell  { color: var(--critical); border-color: var(--critical); }
+  .b-none  { color: var(--muted); border-color: var(--border); }
+  .empty { color: var(--muted); font-size: 12.5px; padding: 6px 4px; }
+
+  /* Detail panel */
+  #detail { display: none; scroll-margin-top: 100px; }
+  #detail.open { display: block; }
+  .detail-head { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-bottom: 8px; }
+  .detail-head h3 { margin: 0; font-size: 18px; }
+  .ranges { display: flex; gap: 6px; margin-left: auto; }
+  .ranges button, .btn {
+    font: inherit; font-size: 12px; padding: 4px 10px; cursor: pointer;
+    border: 1px solid var(--border); border-radius: 6px;
+    background: var(--surface-1); color: var(--ink-2);
+  }
+  .ranges button.active { border-color: var(--series-1); color: var(--ink); font-weight: 600; }
+  .btn:hover { border-color: var(--series-1); }
+  .btn.primary { border-color: var(--series-1); color: var(--series-1); font-weight: 600; }
+  .btn.danger { color: var(--critical); }
+  #chartwrap { position: relative; }
+  #tooltip {
+    position: absolute; pointer-events: none; display: none; z-index: 4;
+    background: var(--surface-1); border: 1px solid var(--border); border-radius: 6px;
+    padding: 5px 9px; font-size: 12px; box-shadow: 0 2px 8px rgba(0,0,0,.12);
+    white-space: nowrap;
+  }
+  #tooltip .v { font-weight: 650; font-variant-numeric: tabular-nums; }
+  #tooltip .d { color: var(--muted); }
+  #reports { margin-top: 14px; display: grid; gap: 8px; }
+  details.rpt { border: 1px solid var(--border); border-radius: 8px; background: var(--page); }
+  details.rpt summary {
+    display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    padding: 10px 12px; cursor: pointer; list-style: none; user-select: none;
+    font-size: 13px;
+  }
+  details.rpt summary::-webkit-details-marker { display: none; }
+  details.rpt summary::before { content: "▸"; color: var(--muted); transition: transform .15s; }
+  details.rpt[open] summary::before { transform: rotate(90deg); }
+  details.rpt summary:hover { color: var(--series-1); }
+  details.rpt summary b { font-weight: 650; }
+  .rpt-body {
+    border-top: 1px solid var(--border); padding: 10px 14px;
+    max-height: 480px; overflow-y: auto; font-size: 13.5px; background: var(--surface-1);
+    border-radius: 0 0 8px 8px;
+  }
+  .rpt-body h1, .rpt-body h2, .rpt-body h3, .rpt-body h4 {
+    font-size: 14px; margin: 14px 0 6px; color: var(--ink);
+    text-transform: none; letter-spacing: 0;
+  }
+  .rpt-body h1 { font-size: 15px; }
+  .rpt-body table { border-collapse: collapse; margin: 8px 0; width: 100%; overflow-x: auto; display: block; }
+  .rpt-body th, .rpt-body td { border: 1px solid var(--grid); padding: 4px 8px; text-align: left; font-size: 12.5px; }
+  .rpt-body th { color: var(--ink-2); }
+  .rpt-body code { background: var(--page); padding: 1px 4px; border-radius: 4px; font-size: 12px; }
+  .rpt-body hr { border: none; border-top: 1px solid var(--grid); }
+
+  /* Schedule */
+  .slots { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 12px; }
+  .slot { border: 1px solid var(--border); border-radius: 8px; padding: 12px; background: var(--page); display: grid; gap: 8px; }
+  .slot .row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+  .slot label { font-size: 11.5px; color: var(--muted); display: block; margin-bottom: 2px; }
+  .slot input[type=text], .slot input[type=time], .slot input[type=number], .slot select {
+    font: inherit; font-size: 13px; padding: 4px 7px; border: 1px solid var(--border);
+    border-radius: 6px; background: var(--surface-1); color: var(--ink); width: 100%;
+  }
+  .slot input[type=number] { width: 70px; }
+  .switch { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-2); cursor: pointer; }
+  .grid2 { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+
+  /* Tables */
+  section { overflow-x: auto; }
+  table.data { width: 100%; border-collapse: collapse; }
+  table.data th { text-align: left; color: var(--muted); font-size: 11.5px; font-weight: 600;
+                  padding: 6px 8px; border-bottom: 1px solid var(--grid); }
+  table.data td { padding: 7px 8px; border-bottom: 1px solid var(--grid); font-size: 13px; }
+  table.data td.num { font-variant-numeric: tabular-nums; }
+  table.data tbody tr:hover td { background: var(--page); }
+  button:focus-visible, select:focus-visible, input:focus-visible, a:focus-visible {
+    outline: 2px solid var(--series-1); outline-offset: 1px;
+  }
+  .addrow { display: flex; gap: 8px; margin-bottom: 12px; }
+  .addrow input { font: inherit; padding: 6px 10px; border: 1px solid var(--border);
+                  border-radius: 6px; background: var(--page); color: var(--ink); width: 220px; }
+  .tier { font-size: 11.5px; color: var(--muted); }
+  .linksym { cursor: pointer; }
+  .linksym:hover { text-decoration: underline; color: var(--series-1); }
+  .changed { color: var(--good-text); font-weight: 650; }
+  #toast {
+    position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%);
+    background: var(--ink); color: var(--page); padding: 8px 16px; border-radius: 8px;
+    font-size: 13px; display: none; z-index: 20; max-width: 90vw;
+  }
+  #toast.err { background: var(--critical); color: #fff; }
+  .quota-note { color: var(--muted); font-size: 12px; margin-top: 10px; }
+
+  /* Portfolio */
+  .tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: 12px; margin-bottom: 14px; }
+  .tile { border: 1px solid var(--border); border-radius: 8px; padding: 12px 14px; background: var(--page); }
+  .tile .k { font-size: 11.5px; color: var(--muted); margin-bottom: 4px; }
+  .tile .v { font-size: 22px; font-weight: 650; }
+  .tile .s { font-size: 11.5px; color: var(--muted); margin-top: 2px; }
+  .tile svg.spark { display: block; margin-top: 6px; width: 100%; height: 28px; }
+  .ctxline { font-size: 12.5px; color: var(--ink-2); margin-top: 8px; display: flex; gap: 14px; flex-wrap: wrap; }
+  .ctxline b { font-weight: 650; }
+  .pnl-pos { color: var(--good-text); }
+  .pnl-neg { color: var(--critical); }
+  .book-tag { font-size: 10.5px; padding: 1px 7px; border-radius: 999px; border: 1px solid var(--border); color: var(--muted); }
+  .holdrow { display: flex; gap: 8px; margin: 10px 0 12px; flex-wrap: wrap; }
+  .holdrow input { font: inherit; padding: 6px 9px; border: 1px solid var(--border);
+                   border-radius: 6px; background: var(--page); color: var(--ink); }
+  .subhead { font-size: 12px; color: var(--ink-2); font-weight: 650; margin: 14px 0 6px; }
+  footer { text-align: center; color: var(--muted); font-size: 11.5px; padding: 8px 0 24px; }
+</style>
+</head>
+<body>
+<div class="topbar">
+<header>
+  <h1>TradingAgents Assistant</h1>
+  <span class="chip"><span class="dot" id="schedDot" style="background:var(--muted)"></span><span id="schedState">…</span></span>
+  <span class="chip">model <b id="modelChip">…</b></span>
+  <span class="chip">runs <b id="budgetChip">…</b></span>
+  <span class="chip" id="alertChip">alerts …</span>
+  <span class="chip" id="nextRunChip">next run …</span>
+  <span class="chip" id="runningChip" style="display:none">⏳</span>
+  <span class="chip" id="refreshChip" role="button" tabindex="0" style="cursor:pointer; margin-left:auto" title="Refresh all data now">↻ <span id="updatedAt">…</span></span>
+</header>
+
+<nav id="nav">
+  <a href="#/overview">📊 Overview</a>
+  <a href="#/portfolio">💼 Portfolio</a>
+  <a href="#/watchlist">📋 Watchlist</a>
+  <a href="#/schedule">🗓 Schedule</a>
+  <a href="#/screener">🔎 Screener</a>
+  <a href="#/history">🕘 History</a>
+</nav>
+</div>
+
+<main>
+<div class="page" id="page-overview">
+  <section>
+    <h2>Action board <span class="sub">— latest rating per ticker; click a card for chart &amp; full analysis</span></h2>
+    <div class="board">
+      <div class="lane"><h3>🟢 Buy side</h3><div id="laneBuy"></div></div>
+      <div class="lane"><h3>⚪ Hold</h3><div id="laneHold"></div></div>
+      <div class="lane"><h3>🔴 Sell side</h3><div id="laneSell"></div></div>
+      <div class="lane"><h3>◌ Not analyzed yet</h3><div id="laneNone"></div></div>
+    </div>
+  </section>
+
+  <section id="detail">
+    <div class="detail-head">
+      <h3 id="dSymbol"></h3>
+      <span id="dBadge"></span>
+      <span class="tier" id="dMeta"></span>
+      <div class="ranges" id="ranges">
+        <button data-days="30">1M</button>
+        <button data-days="90">3M</button>
+        <button data-days="180" class="active">6M</button>
+        <button data-days="365">1Y</button>
+      </div>
+      <button class="btn primary" id="dAnalyze">🤖 Analyze now</button>
+      <button class="btn" id="dClose">✕ close</button>
+    </div>
+    <div id="chartwrap">
+      <svg id="chart" width="100%" height="260" role="img" aria-label="price history"></svg>
+      <div id="tooltip"></div>
+    </div>
+    <div class="ctxline" id="dContext"></div>
+    <div id="reports"><div class="empty">Loading analyses…</div></div>
+  </section>
+</div>
+
+<div class="page" id="page-portfolio">
+  <section>
+    <h2>Scoreboard <span class="sub">— strategic (LLM signals) vs tactical (rules) vs just buying SPY; the August verdict lives here</span></h2>
+    <div class="tiles" id="tiles"></div>
+
+    <div class="subhead">🧠 Strategic positions <span class="sub">(LLM signals, auto-traded at live prices)</span></div>
+    <table class="data"><thead><tr>
+      <th>Symbol</th><th>Qty</th><th>Avg price</th><th>Last</th><th>Value</th><th>P&amp;L</th><th>Stop</th><th>Target</th><th>Since</th>
+    </tr></thead><tbody id="paperBody"></tbody></table>
+
+    <div class="subhead">⚡ Tactical positions <span class="sub" id="tacticalSub">(rule-based)</span></div>
+    <table class="data"><thead><tr>
+      <th>Symbol</th><th>Qty</th><th>Avg price</th><th>Last</th><th>Value</th><th>P&amp;L</th><th>Stop</th><th>Rule</th><th>Since</th>
+    </tr></thead><tbody id="tacticalBody"></tbody></table>
+
+    <div class="subhead">💼 Real holdings <span class="sub">(what you actually own — alerts include your P&amp;L)</span></div>
+    <div class="holdrow">
+      <input id="hSym" placeholder="Symbol" style="width:110px" spellcheck="false">
+      <input id="hQty" placeholder="Qty" type="number" min="0" step="any" style="width:90px">
+      <input id="hPrice" placeholder="Buy price" type="number" min="0" step="any" style="width:110px">
+      <input id="hDate" type="date" style="width:150px">
+      <input id="hStop" placeholder="Stop (opt.)" type="number" min="0" step="any" style="width:100px">
+      <button class="btn primary" id="hAdd">Log holding</button>
+    </div>
+    <table class="data"><thead><tr>
+      <th>Symbol</th><th>Qty</th><th>Avg price</th><th>Last</th><th>Value</th><th>P&amp;L</th><th>Stop</th><th>Since</th><th></th>
+    </tr></thead><tbody id="realBody"></tbody></table>
+
+    <div class="subhead">Trades</div>
+    <table class="data"><thead><tr>
+      <th>When</th><th>Book</th><th>Side</th><th>Symbol</th><th>Qty @ price</th><th>Reason</th><th>Realized P&amp;L</th>
+    </tr></thead><tbody id="tradeBody"></tbody></table>
+  </section>
+</div>
+
+<div class="page" id="page-schedule">
+  <section>
+    <h2>Analysis schedule <span class="sub">— when the agents run and how many tickers per window</span></h2>
+    <div class="slots" id="slots"></div>
+    <div class="addrow" style="margin-top:12px">
+      <button class="btn primary" id="slotAdd">＋ Add slot</button>
+      <span class="tier" style="align-self:center">new slots start disabled — set time/market, then enable</span>
+    </div>
+    <div class="quota-note" id="quotaNote"></div>
+  </section>
+</div>
+
+<div class="page" id="page-watchlist">
+  <section>
+    <h2>Watchlist</h2>
+    <div class="addrow">
+      <input id="addSym" placeholder="Add ticker — e.g. TSLA, TCS.NS, SOL-USD" spellcheck="false">
+      <button class="btn primary" id="addBtn">Add</button>
+    </div>
+    <table class="data"><thead><tr>
+      <th>Symbol</th><th>Type</th><th>Market</th><th>Coverage</th><th>Rating</th><th>Next review</th><th>Last run</th><th></th>
+    </tr></thead><tbody id="wlBody"></tbody></table>
+    <div class="quota-note">🏛 core = permanent hand-picked holdings (giants, index ETFs) · 💎 satellite = screener finds, rotate in and out. <b>When is a ticker analyzed?</b> The "Next review" date (chosen by its last analysis), or earlier on an abnormal price move or near a stop/target — set coverage to "paused" to opt a ticker out entirely. Positions are always price-monitored every 5 minutes regardless.</div>
+  </section>
+</div>
+
+<div class="page" id="page-screener">
+  <section>
+    <h2>Anomaly screener <span class="sub">— daily hunt for under-followed strength (revenue growth + momentum + insider buying vs. low attention); top picks join the watchlist automatically</span></h2>
+    <div class="addrow">
+      <button class="btn primary" id="screenerRun">🔎 Run screener now</button>
+      <span class="tier" style="align-self:center">runs Mon–Fri 6:00 AM automatically · no LLM cost</span>
+    </div>
+    <table class="data"><thead><tr>
+      <th>Date</th><th>Symbol</th><th>Market</th><th>Score</th><th>Why</th><th>Added</th>
+    </tr></thead><tbody id="screenerBody"></tbody></table>
+  </section>
+</div>
+
+<div class="page" id="page-history">
+  <section>
+    <h2>Run history <span class="sub">— every analysis, timestamped; click a row to open that exact report</span></h2>
+    <table class="data"><thead><tr>
+      <th>When</th><th>Symbol</th><th>Rating</th><th>Change</th><th>Status</th><th>Duration</th>
+    </tr></thead><tbody id="sigBody"></tbody></table>
+  </section>
+</div>
+</main>
+
+<footer>Research output — not financial advice. Verify before trading.</footer>
+<div id="toast"></div>
+
+<script>
+"use strict";
+const $ = (id) => document.getElementById(id);
+const esc = (s) => String(s ?? "").replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
+
+const RATING = {
+  Buy:        { cls: "b-buy",   icon: "▲", lane: "buy"  },
+  Overweight: { cls: "b-over",  icon: "↗", lane: "buy"  },
+  Hold:       { cls: "b-hold",  icon: "—", lane: "hold" },
+  Underweight:{ cls: "b-under", icon: "↘", lane: "sell" },
+  Sell:       { cls: "b-sell",  icon: "▼", lane: "sell" },
+};
+const badge = (rating) => {
+  const r = RATING[rating];
+  if (!r) return `<span class="badge b-none">◌ not yet analyzed</span>`;
+  return `<span class="badge ${r.cls}">${r.icon} ${esc(rating)}</span>`;
+};
+
+let watchlist = [], health = null, currentSymbol = null, currentDays = 180;
+
+/* ---------- page router (hash-based: #/overview, #/portfolio, ...) ---------- */
+const PAGES = ["overview", "portfolio", "watchlist", "schedule", "screener", "history"];
+function route() {
+  const target = location.hash.replace("#/", "") || "overview";
+  const page = PAGES.includes(target) ? target : "overview";
+  PAGES.forEach(p => $(`page-${p}`).classList.toggle("active", p === page));
+  document.querySelectorAll("#nav a").forEach(a =>
+    a.classList.toggle("active", a.getAttribute("href") === `#/${page}`));
+}
+window.addEventListener("hashchange", route);
+
+/* ---------- analysis-in-flight indicator ---------- */
+function setRunning(sym) {
+  localStorage.setItem("runningAnalysis", JSON.stringify({ sym, at: Date.now() }));
+  updateRunningChip();
+}
+function updateRunningChip(latestSignals) {
+  const chip = $("runningChip");
+  // Server truth first: shows SCHEDULED runs too, not just manual clicks.
+  if (health?.analyzing?.symbol) {
+    const mins = Math.max(0, Math.round((Date.now() - parseUTC(health.analyzing.started_at)) / 60000));
+    chip.textContent = `🔬 analyzing ${health.analyzing.symbol} · ${mins}m (${health.analyzing.label})`;
+    chip.title = "A deep analysis is running right now — scheduled runs show here too";
+    chip.style.display = "inline-flex";
+    return;
+  }
+  const raw = localStorage.getItem("runningAnalysis");
+  if (!raw) { chip.style.display = "none"; return; }
+  const { sym, at } = JSON.parse(raw);
+  const done = latestSignals?.some(s => s.symbol === sym && new Date(s.created_at) > new Date(at));
+  if (done || Date.now() - at > 30 * 60 * 1000) {
+    localStorage.removeItem("runningAnalysis");
+    chip.style.display = "none";
+    if (done) toast(`${sym} analysis finished — see Overview`);
+    return;
+  }
+  const mins = Math.round((Date.now() - at) / 60000);
+  chip.textContent = `⏳ analyzing ${sym} · ${mins}m`;
+  chip.style.display = "inline-flex";
+}
+
+function toast(msg, isError = false) {
+  const t = $("toast"); t.textContent = msg; t.style.display = "block";
+  t.classList.toggle("err", isError);
+  clearTimeout(t._h); t._h = setTimeout(() => t.style.display = "none", isError ? 6000 : 3500);
+}
+async function api(path, opts) {
+  const res = await fetch(path, opts);
+  if (!res.ok) {
+    let detail = res.statusText;
+    try { detail = (await res.json()).detail || detail; } catch {}
+    throw new Error(detail);
+  }
+  return res.status === 204 ? null : res.json();
+}
+// API timestamps are UTC but arrive without a timezone marker; parsing them
+// bare would make the browser read them as local time (hours in the future).
+const parseUTC = (iso) => new Date(/Z|[+-]\d{2}:?\d{2}$/.test(iso) ? iso : iso + "Z");
+const fmtWhen = (iso) => {
+  if (!iso) return "never";
+  const d = parseUTC(iso), diff = (Date.now() - d) / 36e5;
+  if (diff < 1) return Math.max(1, Math.round(diff * 60)) + "m ago";
+  if (diff < 24) return Math.round(diff) + "h ago";
+  return d.toLocaleDateString(undefined, { month: "short", day: "numeric" });
+};
+
+/* ---------- header / health ---------- */
+async function loadHealth() {
+  try {
+    health = await api("/health");
+    $("schedDot").style.background = health.scheduler_running ? "var(--good)" : "var(--critical)";
+    $("schedState").textContent = health.scheduler_running ? "scheduler on" : "scheduler OFF";
+    $("modelChip").textContent = `${health.llm_provider} · ${health.deep_model}`;
+    $("budgetChip").textContent =
+      `today ${health.runs_today}/${health.daily_run_budget} · week ${health.runs_this_week}/${health.weekly_run_budget}`;
+    $("budgetChip").title = "Deep-analysis runs used vs budget (daily · weekly)";
+    const alerts = [];
+    alerts.push(health.telegram_configured ? "telegram ✓" : "telegram ✗");
+    alerts.push(health.email_configured ? "email ✓" : "email ✗");
+    $("alertChip").textContent = alerts.join(" · ");
+    const next = health.jobs.filter(j => j.next_run).sort((a, b) => a.next_run.localeCompare(b.next_run))[0];
+    $("nextRunChip").textContent = next
+      ? `next: ${next.name} ${new Date(next.next_run).toLocaleString(undefined, { weekday: "short", hour: "numeric", minute: "2-digit" })}`
+      : "no runs scheduled";
+    $("quotaNote").textContent =
+      `Budgets: ${health.daily_run_budget}/day · ${health.weekly_run_budget}/week (used: ${health.runs_today} today, ${health.runs_this_week} this week). ` +
+      `Slots fund a priority queue — position reviews first, then screener initiations, due reviews, big movers; a quiet day costs nothing.`;
+    $("updatedAt").textContent = new Date().toLocaleTimeString(undefined, { hour: "numeric", minute: "2-digit" });
+    updateRunningChip();
+  } catch (e) { $("schedState").textContent = "unreachable"; }
+}
+
+/* ---------- action board + watchlist ---------- */
+async function loadWatchlist() {
+  watchlist = await api("/watchlist");
+  const lanes = { buy: [], hold: [], sell: [], none: [] };
+  for (const t of watchlist) {
+    const lane = RATING[t.last_rating]?.lane ?? "none";
+    lanes[lane].push(t);
+  }
+  const card = (t) => `
+    <div class="tcard" data-sym="${esc(t.symbol)}" tabindex="0" role="button">
+      <div><div class="sym">${t.category === "core" ? "🏛" : "💎"} ${esc(t.symbol)}</div>
+        <div class="meta">${esc(t.market.toUpperCase())} · ${esc(t.tier)} · ${fmtWhen(t.last_run_at)}</div></div>
+      ${badge(t.last_rating)}
+    </div>`;
+  const fill = (id, arr) => $(id).innerHTML = arr.length ? arr.map(card).join("") : `<div class="empty">none</div>`;
+  fill("laneBuy", lanes.buy); fill("laneHold", lanes.hold);
+  fill("laneSell", lanes.sell); fill("laneNone", lanes.none);
+  document.querySelectorAll(".tcard").forEach(el =>
+    el.addEventListener("click", () => openDetail(el.dataset.sym)));
+
+  $("wlBody").innerHTML = watchlist.map(t => `
+    <tr>
+      <td><b class="linksym" data-open="${esc(t.symbol)}">${esc(t.symbol)}</b></td>
+      <td title="${t.category === "core" ? "core: permanent holding" : "satellite: rotating screener pick"}">${t.category === "core" ? "🏛 core" : "💎 sat"}</td>
+      <td>${esc(t.market.toUpperCase())}</td>
+      <td>
+        <select data-cov="${esc(t.symbol)}" title="auto: the assistant schedules analyses itself (review dates, big moves, position priority) · paused: never analyzed"
+          style="font:inherit; font-size:12px; padding:3px 5px; border:1px solid var(--border); border-radius:6px; background:var(--surface-1); color:var(--ink)">
+          <option value="daily" ${t.tier !== "paused" ? "selected" : ""}>auto</option>
+          <option value="paused" ${t.tier === "paused" ? "selected" : ""}>paused</option>
+        </select>
+      </td>
+      <td>${badge(t.last_rating)}</td>
+      <td class="tier">${t.next_review_at ? parseUTC(t.next_review_at) <= new Date() ? '<span class="changed">due now</span>' : parseUTC(t.next_review_at).toLocaleDateString(undefined, { month: "short", day: "numeric" }) : "—"}</td>
+      <td class="tier">${fmtWhen(t.last_run_at)}</td>
+      <td style="text-align:right; white-space:nowrap">
+        <button class="btn primary" data-act="analyze" data-sym="${esc(t.symbol)}" title="Run deep analysis now (uses 1 run from the budget)">🤖 analyze</button>
+        <button class="btn danger" data-act="del" data-sym="${esc(t.symbol)}">remove</button>
+      </td>
+    </tr>`).join("");
+  $("wlBody").querySelectorAll("button").forEach(b => b.addEventListener("click", wlAction));
+  $("wlBody").querySelectorAll("select[data-cov]").forEach(sel =>
+    sel.addEventListener("change", async () => {
+      try {
+        await api(`/watchlist/${sel.dataset.cov}`, { method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ tier: sel.value }) });
+        toast(`${sel.dataset.cov} coverage set to ${sel.value}`);
+        await loadWatchlist();
+      } catch (e) { toast(e.message); await loadWatchlist(); }
+    }));
+  document.querySelectorAll(".linksym[data-open]").forEach(el =>
+    el.addEventListener("click", () => { location.hash = "#/overview"; openDetail(el.dataset.open); }));
+}
+async function wlAction(ev) {
+  const { act, sym } = ev.target.dataset;
+  try {
+    if (act === "del") {
+      if (!confirm(`Remove ${sym} from the watchlist? Its run history stays.`)) return;
+      await api(`/watchlist/${sym}`, { method: "DELETE" });
+    } else if (act === "analyze") {
+      await api(`/runs/ticker/${sym}`, { method: "POST" });
+      setRunning(sym);
+      toast(`${sym} analysis started — ~10–15 min, uses 1 run from the budget`);
+      return;
+    } else {
+      await api(`/watchlist/${sym}/${act}`, { method: "POST" });
+    }
+    await loadWatchlist();
+  } catch (e) { toast(e.message, true); }
+}
+$("addBtn").addEventListener("click", async () => {
+  const sym = $("addSym").value.trim();
+  if (!sym) return;
+  try {
+    await api("/watchlist", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ symbol: sym }) });
+    $("addSym").value = "";
+    await loadWatchlist();
+    toast(`${sym.toUpperCase()} added — it will be picked up by the next slot (stalest first)`);
+  } catch (e) { toast(e.message); }
+});
+$("addSym").addEventListener("keydown", e => { if (e.key === "Enter") $("addBtn").click(); });
+
+/* ---------- detail: chart + report ---------- */
+async function openDetail(sym) {
+  currentSymbol = sym;
+  const t = watchlist.find(x => x.symbol === sym);
+  $("dSymbol").textContent = sym;
+  $("dBadge").innerHTML = badge(t?.last_rating);
+  $("dMeta").textContent = t ? `${t.market.toUpperCase()} · ${t.tier} coverage · last analyzed ${fmtWhen(t.last_run_at)}` : "";
+  $("detail").classList.add("open");
+  $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+  drawChart(sym, currentDays);
+  loadTickerContext(sym);
+  if (t && !t.last_rating) {
+    // Never analyzed: skip the report fetch (avoids pointless 404s in the log)
+    $("reports").innerHTML = `<div class="empty">Not analyzed yet — hit “🤖 Analyze now” to run the agents on ${esc(sym)} (~10–15 min, uses 1 run from today's budget).</div>`;
+  } else {
+    loadReportVersions(sym);
+  }
+}
+
+async function loadTickerContext(sym) {
+  const box = $("dContext");
+  box.innerHTML = "";
+  try {
+    const c = await api(`/tickers/${sym}/context`);
+    const bits = [];
+    if (c.next_earnings_date) {
+      const days = c.days_to_earnings;
+      const urgency = days != null && days <= 7 ? " ⚠️" : "";
+      bits.push(`📅 Earnings <b>${esc(c.next_earnings_date)}</b>${days != null ? ` (${days}d)` : ""}${urgency}`);
+    }
+    if (c.eps_estimate_avg != null) bits.push(`EPS est <b>${c.eps_estimate_avg.toFixed(2)}</b>`);
+    if (c.target_median != null) {
+      const up = c.analyst_upside_pct;
+      bits.push(`🎯 Analysts <b>${px(c.target_median)}</b> median` +
+        (up != null ? ` <span class="${up >= 0 ? "pnl-pos" : "pnl-neg"}">(${up >= 0 ? "+" : ""}${up.toFixed(0)}%)</span>` : "") +
+        (c.target_low != null && c.target_high != null ? ` <span class="tier">range ${px(c.target_low)}–${px(c.target_high)}</span>` : ""));
+    }
+    box.innerHTML = bits.join(" · ");
+  } catch { /* context is best-effort garnish */ }
+}
+
+async function loadReportVersions(sym, openId = null) {
+  const box = $("reports");
+  box.innerHTML = `<div class="empty">Loading analyses…</div>`;
+  let versions = [];
+  try { versions = await api(`/tickers/${sym}/reports`); } catch {}
+  if (!versions.length) {
+    box.innerHTML = `<div class="empty">No analysis on record for ${esc(sym)} yet.</div>`;
+    return;
+  }
+  // One collapsible section per timestamped analysis; bodies lazy-load on expand.
+  box.innerHTML = versions.map(v => {
+    const when = parseUTC(v.created_at).toLocaleString(undefined,
+      { month: "short", day: "numeric", year: "numeric", hour: "numeric", minute: "2-digit" });
+    return `<details class="rpt" data-sid="${v.id}">
+      <summary><b>${when}</b> ${badge(v.rating)}
+        <span class="tier">trade date ${esc(v.trade_date)}</span></summary>
+      <div class="rpt-body"><div class="empty">Loading…</div></div>
+    </details>`;
+  }).join("");
+  box.querySelectorAll("details.rpt").forEach(d =>
+    d.addEventListener("toggle", () => {
+      if (d.open && !d.dataset.loaded) loadReportInto(sym, d);
+    }));
+  const target = box.querySelector(`details[data-sid="${openId}"]`) || box.querySelector("details.rpt");
+  target.open = true;
+  if (openId) target.scrollIntoView({ behavior: "smooth", block: "nearest" });
+}
+
+async function loadReportInto(sym, detailsEl) {
+  detailsEl.dataset.loaded = "1";
+  const body = detailsEl.querySelector(".rpt-body");
+  try {
+    const r = await api(`/tickers/${sym}/report?signal_id=${detailsEl.dataset.sid}`);
+    body.innerHTML = mdToHtml(r.markdown);
+  } catch (e) {
+    body.innerHTML = `<div class="empty">${esc(e.message)}</div>`;
+    delete detailsEl.dataset.loaded;
+  }
+}
+$("dClose").addEventListener("click", () => $("detail").classList.remove("open"));
+$("dAnalyze").addEventListener("click", async () => {
+  if (!currentSymbol) return;
+  try {
+    await api(`/runs/ticker/${currentSymbol}`, { method: "POST" });
+    setRunning(currentSymbol);
+    toast(`${currentSymbol} analysis started — ~10–15 min; you'll get a Telegram alert if the rating changes`);
+  } catch (e) { toast(e.message); }
+});
+$("ranges").querySelectorAll("button").forEach(b => b.addEventListener("click", () => {
+  $("ranges").querySelectorAll("button").forEach(x => x.classList.remove("active"));
+  b.classList.add("active");
+  currentDays = +b.dataset.days;
+  if (currentSymbol) drawChart(currentSymbol, currentDays);
+}));
+
+let chartData = null;
+async function drawChart(sym, days) {
+  const svg = $("chart");
+  svg.innerHTML = `<text x="20" y="40" fill="var(--muted)" font-size="12">loading ${esc(sym)}…</text>`;
+  try { chartData = await api(`/tickers/${sym}/prices?days=${days}`); }
+  catch (e) { svg.innerHTML = `<text x="20" y="40" fill="var(--muted)" font-size="12">${esc(e.message)}</text>`; return; }
+  renderChart();
+}
+function renderChart() {
+  const svg = $("chart"), { dates, close } = chartData;
+  const W = svg.clientWidth || 900, H = 260, padL = 8, padR = 64, padT = 14, padB = 26;
+  svg.setAttribute("viewBox", `0 0 ${W} ${H}`);
+  const lo = Math.min(...close), hi = Math.max(...close);
+  const span = (hi - lo) || 1;
+  const x = i => padL + (i / (close.length - 1)) * (W - padL - padR);
+  const y = v => padT + (1 - (v - lo) / span) * (H - padT - padB);
+  const fmt = v => v >= 1000 ? v.toLocaleString(undefined, { maximumFractionDigits: 0 })
+                             : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+  let g = "";
+  // recessive horizontal gridlines + right-side tick labels (muted ink, tabular)
+  for (let k = 0; k <= 3; k++) {
+    const v = lo + (span * k) / 3, yy = y(v);
+    g += `<line x1="${padL}" y1="${yy}" x2="${W - padR}" y2="${yy}" stroke="var(--grid)" stroke-width="1"/>`;
+    g += `<text x="${W - padR + 8}" y="${yy + 4}" fill="var(--muted)" font-size="11" style="font-variant-numeric:tabular-nums">${fmt(v)}</text>`;
+  }
+  // x labels: first / middle / last date
+  const xi = [0, Math.floor((dates.length - 1) / 2), dates.length - 1];
+  for (const i of xi) {
+    const anchor = i === 0 ? "start" : (i === dates.length - 1 ? "end" : "middle");
+    g += `<text x="${x(i)}" y="${H - 8}" fill="var(--muted)" font-size="11" text-anchor="${anchor}">${dates[i]}</text>`;
+  }
+  g += `<line x1="${padL}" y1="${H - padB}" x2="${W - padR}" y2="${H - padB}" stroke="var(--baseline)" stroke-width="1"/>`;
+  const path = close.map((v, i) => `${i ? "L" : "M"}${x(i).toFixed(1)},${y(v).toFixed(1)}`).join("");
+  g += `<path d="${path}" fill="none" stroke="var(--series-1)" stroke-width="2" stroke-linejoin="round"/>`;
+  // last-value direct label (selective, not every point)
+  const li = close.length - 1;
+  g += `<circle cx="${x(li)}" cy="${y(close[li])}" r="3.5" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2"/>`;
+  // hover layer
+  g += `<line id="xhair" x1="0" y1="${padT}" x2="0" y2="${H - padB}" stroke="var(--baseline)" stroke-width="1" visibility="hidden"/>`;
+  g += `<circle id="hdot" r="4" fill="var(--series-1)" stroke="var(--surface-1)" stroke-width="2" visibility="hidden"/>`;
+  g += `<rect x="${padL}" y="${padT}" width="${W - padL - padR}" height="${H - padT - padB}" fill="transparent" id="hitarea"/>`;
+  svg.innerHTML = g;
+
+  const tip = $("tooltip");
+  const move = (ev) => {
+    const rect = svg.getBoundingClientRect();
+    const px = (ev.touches ? ev.touches[0].clientX : ev.clientX) - rect.left;
+    const i = Math.max(0, Math.min(close.length - 1,
+      Math.round(((px - padL) / (W - padL - padR)) * (close.length - 1))));
+    const cx = x(i), cy = y(close[i]);
+    const xh = svg.querySelector("#xhair"), hd = svg.querySelector("#hdot");
+    xh.setAttribute("x1", cx); xh.setAttribute("x2", cx); xh.setAttribute("visibility", "visible");
+    hd.setAttribute("cx", cx); hd.setAttribute("cy", cy); hd.setAttribute("visibility", "visible");
+    tip.innerHTML = `<span class="v">${fmt(close[i])}</span> <span class="d">${dates[i]}</span>`;
+    tip.style.display = "block";
+    const wrap = $("chartwrap").getBoundingClientRect();
+    let tx = (cx / W) * wrap.width + 12;
+    if (tx + tip.offsetWidth > wrap.width - 8) tx -= tip.offsetWidth + 24;
+    tip.style.left = tx + "px";
+    tip.style.top = Math.max(0, (cy / H) * wrap.height - 34) + "px";
+  };
+  const leave = () => {
+    tip.style.display = "none";
+    svg.querySelector("#xhair").setAttribute("visibility", "hidden");
+    svg.querySelector("#hdot").setAttribute("visibility", "hidden");
+  };
+  const hit = svg.querySelector("#hitarea");
+  hit.addEventListener("mousemove", move);
+  hit.addEventListener("touchmove", move, { passive: true });
+  hit.addEventListener("mouseleave", leave);
+  hit.addEventListener("touchend", leave);
+}
+window.addEventListener("resize", () => { if (chartData && $("detail").classList.contains("open")) renderChart(); });
+
+/* tiny markdown renderer for the saved analysis reports */
+function mdToHtml(md) {
+  const lines = esc(md).split(/\r?\n/);
+  let html = "", inList = false, tableBuf = [];
+  const inline = (s) => s
+    .replace(/\*\*([^*]+)\*\*/g, "<b>$1</b>")
+    .replace(/\*([^*]+)\*/g, "<i>$1</i>")
+    .replace(/`([^`]+)`/g, "<code>$1</code>");
+  const flushTable = () => {
+    if (!tableBuf.length) return;
+    const rows = tableBuf.filter(r => !/^\s*\|?[\s:-]+\|[\s|:-]*$/.test(r));
+    html += "<table>" + rows.map((r, i) => {
+      const cells = r.replace(/^\||\|$/g, "").split("|").map(c => inline(c.trim()));
+      const tag = i === 0 ? "th" : "td";
+      return `<tr>${cells.map(c => `<${tag}>${c}</${tag}>`).join("")}</tr>`;
+    }).join("") + "</table>";
+    tableBuf = [];
+  };
+  for (const line of lines) {
+    if (/^\s*\|.*\|\s*$/.test(line)) { tableBuf.push(line); continue; }
+    flushTable();
+    const h = line.match(/^(#{1,4})\s+(.*)/);
+    if (h) { if (inList) { html += "</ul>"; inList = false; }
+      html += `<h${h[1].length}>${inline(h[2])}</h${h[1].length}>`; continue; }
+    if (/^\s*[-*]\s+/.test(line)) {
+      if (!inList) { html += "<ul>"; inList = true; }
+      html += `<li>${inline(line.replace(/^\s*[-*]\s+/, ""))}</li>`; continue;
+    }
+    if (inList) { html += "</ul>"; inList = false; }
+    if (/^\s*(-{3,}|_{3,})\s*$/.test(line)) { html += "<hr>"; continue; }
+    if (line.trim() === "") { html += ""; continue; }
+    html += `<p>${inline(line)}</p>`;
+  }
+  if (inList) html += "</ul>";
+  flushTable();
+  return html;
+}
+
+/* ---------- schedule ---------- */
+const TZS = ["America/Chicago", "America/New_York", "Asia/Kolkata", "Europe/London", "UTC"];
+async function loadSlots() {
+  const slots = await api("/schedule");
+  $("slots").innerHTML = slots.map(s => `
+    <div class="slot" data-id="${s.id}">
+      <div class="row" style="justify-content:space-between">
+        <input type="text" data-f="label" value="${esc(s.label)}" style="font-weight:650; width:55%">
+        <label class="switch"><input type="checkbox" data-f="enabled" ${s.enabled ? "checked" : ""}> enabled</label>
+      </div>
+      <div class="grid2">
+        <div><label>Run at</label><input type="time" data-f="run_time" value="${esc(s.run_time)}"></div>
+        <div><label>Timezone</label><select data-f="timezone">
+          ${TZS.map(z => `<option ${z === s.timezone ? "selected" : ""}>${z}</option>`).join("")}
+        </select></div>
+        <div><label>Market</label><select data-f="market">
+          <option value="any" ${!s.market ? "selected" : ""}>any</option>
+          <option value="us" ${s.market === "us" ? "selected" : ""}>US</option>
+          <option value="india" ${s.market === "india" ? "selected" : ""}>India</option>
+          <option value="crypto" ${s.market === "crypto" ? "selected" : ""}>Crypto</option>
+        </select></div>
+        <div><label>Tickers per run</label><input type="number" data-f="max_tickers" min="1" max="20" value="${s.max_tickers}"></div>
+      </div>
+      <div class="row" style="justify-content:flex-end">
+        <button class="btn danger" data-del title="Delete this slot">🗑</button>
+        <button class="btn" data-run>▶ Run now</button>
+        <button class="btn primary" data-save>Save</button>
+      </div>
+    </div>`).join("");
+
+  $("slots").querySelectorAll(".slot").forEach(card => {
+    card.querySelector("[data-save]").addEventListener("click", async () => {
+      const body = {};
+      card.querySelectorAll("[data-f]").forEach(el => {
+        body[el.dataset.f] = el.type === "checkbox" ? el.checked
+          : el.type === "number" ? +el.value : el.value;
+      });
+      try {
+        await api(`/schedule/${card.dataset.id}`, { method: "PATCH",
+          headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+        toast("Slot saved — schedule updated");
+        await Promise.all([loadSlots(), loadHealth()]);
+      } catch (e) { toast(e.message); }
+    });
+    card.querySelector("[data-run]").addEventListener("click", async () => {
+      try {
+        const r = await api(`/schedule/${card.dataset.id}/run`, { method: "POST" });
+        toast(`${r.slot} started — a full analysis takes ~10–15 min per ticker`);
+      } catch (e) { toast(e.message); }
+    });
+    card.querySelector("[data-del]").addEventListener("click", async () => {
+      const label = card.querySelector('[data-f="label"]').value;
+      if (!confirm(`Delete slot "${label}"?`)) return;
+      try {
+        await api(`/schedule/${card.dataset.id}`, { method: "DELETE" });
+        toast(`Slot "${label}" deleted`);
+        await Promise.all([loadSlots(), loadHealth()]);
+      } catch (e) { toast(e.message); }
+    });
+  });
+}
+$("slotAdd").addEventListener("click", async () => {
+  try {
+    await api("/schedule", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ label: "New slot", run_time: "12:00", timezone: "America/Chicago",
+                             market: "any", enabled: false, max_tickers: 1 }) });
+    toast("Slot added (disabled) — set its time and market, then enable and save");
+    await loadSlots();
+  } catch (e) { toast(e.message); }
+});
+
+/* ---------- portfolio ---------- */
+const usd = (v, dp = 0) => v == null ? "—" : "$" + v.toLocaleString(undefined, { maximumFractionDigits: dp });
+const px = (v) => v == null ? "—" : v.toLocaleString(undefined, { maximumFractionDigits: 2 });
+const qty = (v) => (+v).toLocaleString(undefined, { maximumFractionDigits: 4 });
+const pnlCell = (usd_, pct) => {
+  if (usd_ == null) return "—";
+  const cls = usd_ >= 0 ? "pnl-pos" : "pnl-neg";
+  const sign = usd_ >= 0 ? "+" : "−";
+  const p = pct == null ? "" : ` (${sign}${Math.abs(pct).toFixed(1)}%)`;
+  return `<span class="${cls}">${sign}$${Math.abs(usd_).toLocaleString(undefined,{maximumFractionDigits:0})}${p}</span>`;
+};
+
+function sparkline(points, colorVar) {
+  if (!points || points.length < 2) return "";
+  const values = points.map(p => p.equity_usd);
+  const lo = Math.min(...values), hi = Math.max(...values), span = (hi - lo) || 1;
+  const W = 160, H = 28, pad = 2;
+  const path = values.map((v, i) =>
+    `${i ? "L" : "M"}${(pad + (i / (values.length - 1)) * (W - 2 * pad)).toFixed(1)},` +
+    `${(pad + (1 - (v - lo) / span) * (H - 2 * pad)).toFixed(1)}`).join("");
+  return `<svg class="spark" viewBox="0 0 ${W} ${H}" preserveAspectRatio="none" aria-hidden="true">
+    <path d="${path}" fill="none" stroke="var(${colorVar})" stroke-width="1.5"/></svg>`;
+}
+
+let equityHistory = { strategic: [], tactical: [] };
+
+async function loadPortfolio() {
+  let pf;
+  try { pf = await api("/portfolio"); } catch { return; }
+  try { equityHistory = await api("/portfolio/history"); } catch {}
+  const bench = pf.benchmark_return_pct;
+  const fmtRet = (r) => r == null ? "—" : (r >= 0 ? "+" : "") + r.toFixed(2) + "%";
+  const cls = (r) => (r ?? 0) >= 0 ? "pnl-pos" : "pnl-neg";
+
+  const bookTile = (b, emoji, colorVar) => `
+    <div class="tile"><div class="k">${emoji} ${esc(b.label)} book${b.enabled ? "" : " · <i>off</i>"}</div>
+      <div class="v ${cls(b.return_pct)}">${fmtRet(b.return_pct)}</div>
+      <div class="s">${usd(b.equity_usd)} equity · ${usd(b.cash_usd)} cash · ${b.positions.length} pos</div>
+      ${sparkline(equityHistory[b.label], colorVar)}</div>`;
+
+  const strategic = pf.books.find(b => b.label === "strategic");
+  const tactical = pf.books.find(b => b.label === "tactical");
+  $("tiles").innerHTML =
+    (strategic ? bookTile(strategic, "🧠", "--series-1") : "") +
+    (tactical ? bookTile(tactical, "⚡", "--good") : "") +
+    `<div class="tile"><div class="k">📊 SPY benchmark</div>
+      <div class="v ${cls(bench)}">${fmtRet(bench)}</div>
+      <div class="s">same period — the bar both books must beat</div></div>`;
+
+  $("paperBody").innerHTML = pf.paper_positions.length ? pf.paper_positions.map(p => `
+    <tr><td><b>${esc(p.symbol)}</b></td><td class="num">${qty(p.quantity)}</td>
+      <td class="num">${px(p.avg_price)} ${esc(p.currency)}</td><td class="num">${px(p.last_price)}</td>
+      <td class="num">${usd(p.value_usd)}</td><td class="num">${pnlCell(p.pnl_usd, p.pnl_pct)}</td>
+      <td class="num tier">${px(p.stop_loss)}</td><td class="num tier">${px(p.price_target)}</td>
+      <td class="tier">${fmtWhen(p.opened_at)}</td></tr>`).join("")
+    : `<tr><td colspan="9" class="empty">No strategic positions yet — the first Buy/Overweight signal opens one automatically.</td></tr>`;
+
+  const tacticalPositions = tactical ? tactical.positions : [];
+  $("tacticalSub").textContent = pf.tactical_rule
+    ? `(rule: ${pf.tactical_rule}, end-of-day passes)`
+    : "(disabled — no rule passed the 10-year backtest gate; enable deliberately via TACTICAL_RULE in .env)";
+  $("tacticalBody").innerHTML = tacticalPositions.length ? tacticalPositions.map(p => `
+    <tr><td><b>${esc(p.symbol)}</b></td><td class="num">${qty(p.quantity)}</td>
+      <td class="num">${px(p.avg_price)} ${esc(p.currency)}</td><td class="num">${px(p.last_price)}</td>
+      <td class="num">${usd(p.value_usd)}</td><td class="num">${pnlCell(p.pnl_usd, p.pnl_pct)}</td>
+      <td class="num tier">${px(p.stop_loss)}</td><td class="tier">${esc(p.note ?? "")}</td>
+      <td class="tier">${fmtWhen(p.opened_at)}</td></tr>`).join("")
+    : `<tr><td colspan="9" class="empty">${pf.tactical_rule ? "No tactical positions — the rule sees no setups right now." : "Tactical book idle by design: every tested rule lost to buy-and-hold over 10 years (see scripts/backtest_tactical.py)."}</td></tr>`;
+
+  $("realBody").innerHTML = pf.real_positions.length ? pf.real_positions.map(p => `
+    <tr><td><b>${esc(p.symbol)}</b></td><td class="num">${qty(p.quantity)}</td>
+      <td class="num">${px(p.avg_price)} ${esc(p.currency)}</td><td class="num">${px(p.last_price)}</td>
+      <td class="num">${usd(p.value_usd)}</td><td class="num">${pnlCell(p.pnl_usd, p.pnl_pct)}</td>
+      <td class="num tier">${px(p.stop_loss)}</td><td class="tier">${fmtWhen(p.opened_at)}</td>
+      <td style="text-align:right"><button class="btn danger" data-pid="${p.id}">sold it</button></td></tr>`).join("")
+    : `<tr><td colspan="9" class="empty">No real holdings logged. Add what you own above to get P&amp;L context in alerts.</td></tr>`;
+  $("realBody").querySelectorAll("button[data-pid]").forEach(b => b.addEventListener("click", async () => {
+    if (!confirm("Mark this holding as sold (at the live price)?")) return;
+    try { await api(`/holdings/${b.dataset.pid}`, { method: "DELETE" }); await Promise.all([loadPortfolio(), loadTrades()]); }
+    catch (e) { toast(e.message); }
+  }));
+}
+$("hAdd").addEventListener("click", async () => {
+  const body = {
+    symbol: $("hSym").value.trim(), quantity: +$("hQty").value, price: +$("hPrice").value,
+    bought_at: $("hDate").value || null, stop_loss: +$("hStop").value || null,
+  };
+  if (!body.symbol || !body.quantity || !body.price) { toast("Symbol, qty, and buy price are required"); return; }
+  try {
+    await api("/holdings", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) });
+    ["hSym","hQty","hPrice","hDate","hStop"].forEach(id => $(id).value = "");
+    await Promise.all([loadPortfolio(), loadTrades()]);
+    toast("Holding logged — alerts for this ticker now include your P&L");
+  } catch (e) { toast(e.message); }
+});
+
+async function loadTrades() {
+  let ts;
+  try { ts = await api("/trades"); } catch { return; }
+  $("tradeBody").innerHTML = ts.length ? ts.slice(0, 20).map(t => `
+    <tr><td class="tier">${fmtWhen(t.executed_at)}</td>
+      <td><span class="book-tag">${t.account_type}</span></td>
+      <td>${t.side === "buy" ? "🟢 buy" : "🔴 sell"}</td>
+      <td><b>${esc(t.symbol)}</b></td>
+      <td class="num">${qty(t.quantity)} @ ${px(t.price)} ${esc(t.currency)}</td>
+      <td class="tier">${esc(t.reason)}</td>
+      <td class="num">${t.realized_pnl_usd == null ? "—" : pnlCell(t.realized_pnl_usd, null)}</td></tr>`).join("")
+    : `<tr><td colspan="7" class="empty">No trades yet.</td></tr>`;
+}
+
+/* ---------- screener ---------- */
+async function loadScreener() {
+  let rows;
+  try { rows = await api("/screener"); } catch { return; }
+  $("screenerBody").innerHTML = rows.length ? rows.map(r => `
+    <tr>
+      <td class="tier">${esc(r.run_date)}</td>
+      <td><b class="linksym" data-openscr="${esc(r.symbol)}">${esc(r.symbol)}</b></td>
+      <td class="tier">${esc(r.market.toUpperCase())}</td>
+      <td class="num"><b>${r.score.toFixed(0)}</b></td>
+      <td class="tier">${esc(r.summary)}</td>
+      <td>${r.added ? `<span class="changed">✓ watchlist</span>` : ""}</td>
+    </tr>`).join("")
+    : `<tr><td colspan="6" class="empty">No screener runs yet — it fires each weekday morning, or run it now.</td></tr>`;
+  $("screenerBody").querySelectorAll(".linksym[data-openscr]").forEach(el =>
+    el.addEventListener("click", () => { location.hash = "#/overview"; openDetail(el.dataset.openscr); }));
+}
+$("screenerRun").addEventListener("click", async () => {
+  try {
+    await api("/screener/run", { method: "POST" });
+    toast("Screener running — results appear here in a minute or two");
+    setTimeout(() => { loadScreener(); loadWatchlist(); }, 90000);
+  } catch (e) { toast(e.message); }
+});
+
+/* ---------- signals ---------- */
+async function loadSignals() {
+  const sigs = await api("/signals?limit=30");
+  $("sigBody").innerHTML = sigs.length ? sigs.map(s => `
+    <tr ${s.status === "success" ? `class="sigrow" style="cursor:pointer" title="Open this analysis" data-sid="${s.id}" data-sym="${esc(s.symbol)}"` : ""}>
+      <td class="tier">${fmtWhen(s.created_at)}</td>
+      <td><b>${esc(s.symbol)}</b></td>
+      <td>${badge(s.rating)}</td>
+      <td>${s.changed ? `<span class="changed">${esc(s.prev_rating ?? "new")} → ${esc(s.rating)}</span>` : `<span class="tier">unchanged</span>`}</td>
+      <td>${s.status === "success" ? "✓" : `<span style="color:var(--critical)" title="${esc(s.error ?? "")}">✗ failed</span>`}</td>
+      <td class="num tier">${s.duration_seconds ? Math.round(s.duration_seconds / 60) + "m" : ""}</td>
+    </tr>`).join("") : `<tr><td colspan="6" class="empty">No runs yet — hit “Run now” on a slot above, or wait for the schedule.</td></tr>`;
+  updateRunningChip(sigs);
+  $("sigBody").querySelectorAll("tr.sigrow").forEach(row => row.addEventListener("click", async () => {
+    const sym = row.dataset.sym, sid = row.dataset.sid;
+    const t = watchlist.find(x => x.symbol === sym);
+    currentSymbol = sym;
+    location.hash = "#/overview";
+    $("dSymbol").textContent = sym;
+    $("dBadge").innerHTML = badge(t?.last_rating);
+    $("dMeta").textContent = t ? `${t.market.toUpperCase()} · ${t.tier} coverage · last analyzed ${fmtWhen(t.last_run_at)}` : "";
+    $("detail").classList.add("open");
+    $("detail").scrollIntoView({ behavior: "smooth", block: "start" });
+    drawChart(sym, currentDays);
+    await loadReportVersions(sym, sid);
+  }));
+}
+
+/* ---------- boot + refresh ---------- */
+async function refresh() {
+  await Promise.allSettled([loadHealth(), loadWatchlist(), loadSignals(), loadPortfolio(), loadTrades(), loadScreener()]);
+}
+$("refreshChip").addEventListener("click", () => { refresh(); loadSlots(); toast("Refreshed"); });
+$("refreshChip").addEventListener("keydown", e => { if (e.key === "Enter") { refresh(); loadSlots(); } });
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && $("detail").classList.contains("open")) {
+    $("detail").classList.remove("open");
+  }
+});
+
+route();
+loadSlots();
+refresh();
+setInterval(refresh, 60000);
+</script>
+</body>
+</html>
